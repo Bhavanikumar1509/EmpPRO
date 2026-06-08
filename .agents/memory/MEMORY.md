@@ -1,0 +1,1 @@
+- [EMP Pro Stack](emp-pro-stack.md) — SQLite (not MySQL/socket blocked in sandbox), SHA-256 password hashing (bcrypt broken), FastAPI on port 8000 at /api
