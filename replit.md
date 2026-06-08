@@ -1,36 +1,49 @@
-# [Project name]
+# EMP Pro
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A comprehensive Employee Management System for managing employees, departments, projects, tasks, attendance, timesheets, performance reviews, notifications, and analytics.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- `Start application` workflow — React/Vite frontend on port 5000 (proxies `/api/*` to FastAPI)
+- `FastAPI Backend` workflow — Python FastAPI backend on port 8000
+- `cd artifacts/fastapi-backend && python3 seed.py` — seed the database with demo data
+- Required env: none (uses SQLite stored at `/home/runner/workspace/.emp_pro.db`)
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- **Frontend**: React 19, Vite, Tailwind CSS 4, Radix UI, TanStack Query, Wouter routing
+- **Backend**: Python 3.12, FastAPI, SQLAlchemy, SQLite (via pydantic-settings)
+- **Auth**: Custom JWT (token stored in localStorage, verified by FastAPI)
+- **Monorepo**: pnpm workspaces — `artifacts/emp-pro` (frontend), `artifacts/fastapi-backend` (backend)
+- **API codegen**: Orval (from `lib/api-spec/openapi.yaml`)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/emp-pro/src/` — React frontend source
+- `artifacts/fastapi-backend/app/` — FastAPI backend (routers, models, schemas, core)
+- `artifacts/fastapi-backend/app/core/config.py` — App config (DB path, secret key)
+- `lib/api-spec/openapi.yaml` — OpenAPI spec (source of truth for API contract)
+- `lib/api-client-react/src/` — Generated React hooks (do not edit manually)
+- `.emp_pro.db` — SQLite database (created automatically on first run)
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Frontend proxies `/api/*` to FastAPI backend via Vite dev server proxy (port 5000 → 8000)
+- JWT tokens stored in localStorage; `customFetch` in `lib/api-client-react` auto-attaches them
+- SQLite with WAL mode for concurrent reads; `check_same_thread=False` for FastAPI threading
+- API client generated from OpenAPI spec via Orval — regenerate with `pnpm --filter @workspace/api-spec run codegen`
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- **Dashboard** — overview stats and charts
+- **Employees** — full CRUD, profiles, department assignment
+- **Departments** — manage org structure
+- **Projects & Tasks** — project tracking with task assignment
+- **Timesheets** — time entry and reporting
+- **Attendance** — clock in/out tracking
+- **Performance** — review cycles
+- **Notifications** — in-app alerts
+- **Analytics** — charts and reporting
 
 ## User preferences
 
@@ -38,8 +51,7 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Always run `cd artifacts/fastapi-backend && python3 seed.py` to populate demo data on a fresh DB
+- `email-validator` must be installed (`pip install email-validator`) — pydantic schemas use `EmailStr`
+- API client hooks live in `lib/api-client-react` — do not edit generated files; run codegen instead
+- Vite config requires `PORT` and `BASE_PATH` env vars (set in the workflow command)
