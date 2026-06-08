@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,6 +7,7 @@ import {
   useListEmployees,
   useDeleteEmployee,
   useCreateEmployee,
+  useUpdateEmployee,
   useListDepartments,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/components/auth-provider";
@@ -58,10 +59,25 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Search, Plus, MoreVertical, Trash2 } from "lucide-react";
+import { Search, Plus, MoreVertical, Trash2, Pencil } from "lucide-react";
 
 type EmployeeSummary = { id: number; full_name: string; email: string };
 
+type EmployeeRow = {
+  id: number;
+  full_name: string;
+  email: string;
+  job_title?: string;
+  phone?: string;
+  department_id?: number;
+  department_name?: string;
+  role: string;
+  status: string;
+  salary?: number;
+  avatar_url?: string;
+};
+
+// ── Add schema ───────────────────────────────────────────────────────────────
 const addSchema = z.object({
   full_name: z.string().min(1, "Full name is required"),
   email: z.string().email("Enter a valid email"),
@@ -72,12 +88,25 @@ const addSchema = z.object({
   role: z.enum(["employee", "admin"]),
   salary: z.string().optional(),
 });
-
 type AddForm = z.infer<typeof addSchema>;
 
+// ── Edit schema ──────────────────────────────────────────────────────────────
+const editSchema = z.object({
+  full_name: z.string().min(1, "Full name is required"),
+  job_title: z.string().optional(),
+  phone: z.string().optional(),
+  department_id: z.string().optional(),
+  role: z.enum(["employee", "admin"]),
+  status: z.enum(["active", "inactive", "on_leave"]),
+  salary: z.string().optional(),
+});
+type EditForm = z.infer<typeof editSchema>;
+
+// ── Component ────────────────────────────────────────────────────────────────
 export default function Employees() {
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<EmployeeRow | null>(null);
   const [toDelete, setToDelete] = useState<EmployeeSummary | null>(null);
 
   const { data, isLoading } = useListEmployees({ search: search || undefined });
@@ -87,21 +116,18 @@ export default function Employees() {
   const queryClient = useQueryClient();
 
   const createEmployee = useCreateEmployee();
+  const updateEmployee = useUpdateEmployee();
   const deleteEmployee = useDeleteEmployee();
 
   const isAdmin = user?.role === "admin";
 
-  const form = useForm<AddForm>({
+  // ── Add form ────────────────────────────────────────────────────────────────
+  const addForm = useForm<AddForm>({
     resolver: zodResolver(addSchema),
     defaultValues: {
-      full_name: "",
-      email: "",
-      password: "",
-      job_title: "",
-      phone: "",
-      department_id: "",
-      role: "employee",
-      salary: "",
+      full_name: "", email: "", password: "",
+      job_title: "", phone: "", department_id: "",
+      role: "employee", salary: "",
     },
   });
 
@@ -124,50 +150,89 @@ export default function Employees() {
       },
       {
         onSuccess: (emp) => {
-          toast({
-            title: "Employee added",
-            description: `${emp.full_name} has been added successfully.`,
-          });
-          form.reset();
+          toast({ title: "Employee added", description: `${emp.full_name} has been added.` });
+          addForm.reset();
           setAddOpen(false);
           queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
         },
         onError: (err: any) => {
-          toast({
-            title: "Failed to add employee",
-            description: err?.message || "Something went wrong.",
-            variant: "destructive",
-          });
+          toast({ title: "Failed to add", description: err?.message || "Something went wrong.", variant: "destructive" });
         },
       }
     );
   };
 
+  // ── Edit form ───────────────────────────────────────────────────────────────
+  const editForm = useForm<EditForm>({
+    resolver: zodResolver(editSchema),
+    defaultValues: {
+      full_name: "", job_title: "", phone: "",
+      department_id: "", role: "employee", status: "active", salary: "",
+    },
+  });
+
+  useEffect(() => {
+    if (editTarget) {
+      editForm.reset({
+        full_name: editTarget.full_name,
+        job_title: editTarget.job_title || "",
+        phone: editTarget.phone || "",
+        department_id: editTarget.department_id ? String(editTarget.department_id) : "",
+        role: (editTarget.role as "employee" | "admin") || "employee",
+        status: (editTarget.status as "active" | "inactive" | "on_leave") || "active",
+        salary: editTarget.salary ? String(editTarget.salary) : "",
+      });
+    }
+  }, [editTarget]);
+
+  const onEdit = (values: EditForm) => {
+    if (!editTarget) return;
+    updateEmployee.mutate(
+      {
+        id: editTarget.id,
+        data: {
+          full_name: values.full_name,
+          job_title: values.job_title || undefined,
+          phone: values.phone || undefined,
+          department_id: values.department_id ? Number(values.department_id) : undefined,
+          role: values.role as "employee" | "admin",
+          status: values.status as "active" | "inactive" | "on_leave",
+          salary: values.salary ? Number(values.salary) : undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast({ title: "Employee updated", description: `${values.full_name}'s details have been saved.` });
+          setEditTarget(null);
+          queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+        },
+        onError: (err: any) => {
+          toast({ title: "Failed to update", description: err?.message || "Something went wrong.", variant: "destructive" });
+        },
+      }
+    );
+  };
+
+  // ── Delete ──────────────────────────────────────────────────────────────────
   const handleConfirmDelete = () => {
     if (!toDelete) return;
     deleteEmployee.mutate(
       { id: toDelete.id },
       {
         onSuccess: () => {
-          toast({
-            title: "Employee removed",
-            description: `${toDelete.full_name} has been deleted.`,
-          });
+          toast({ title: "Employee removed", description: `${toDelete.full_name} has been deleted.` });
           queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
           setToDelete(null);
         },
         onError: (err: any) => {
-          toast({
-            title: "Failed to delete",
-            description: err?.message || "Something went wrong.",
-            variant: "destructive",
-          });
+          toast({ title: "Failed to delete", description: err?.message || "Something went wrong.", variant: "destructive" });
           setToDelete(null);
         },
       }
     );
   };
 
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -221,25 +286,17 @@ export default function Employees() {
               </div>
               <div className="divide-y">
                 {data?.items?.length === 0 ? (
-                  <div className="p-8 text-center text-muted-foreground">
-                    No employees found.
-                  </div>
+                  <div className="p-8 text-center text-muted-foreground">No employees found.</div>
                 ) : (
                   data?.items?.map((employee) => (
-                    <div
-                      key={employee.id}
-                      className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-muted/30 transition-colors"
-                    >
+                    <div key={employee.id} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-muted/30 transition-colors">
                       <div className="col-span-5 sm:col-span-4 flex items-center gap-3">
                         <Avatar>
                           <AvatarImage src={employee.avatar_url || ""} />
                           <AvatarFallback>{employee.full_name?.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div>
-                          <Link
-                            href={`/employees/${employee.id}`}
-                            className="font-medium hover:underline text-primary"
-                          >
+                          <Link href={`/employees/${employee.id}`} className="font-medium hover:underline text-primary">
                             {employee.full_name}
                           </Link>
                           <div className="text-xs text-muted-foreground">{employee.email}</div>
@@ -247,18 +304,11 @@ export default function Employees() {
                       </div>
                       <div className="hidden sm:flex flex-col col-span-3">
                         <span className="text-sm">{employee.department_name || "—"}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {employee.job_title || "—"}
-                        </span>
+                        <span className="text-xs text-muted-foreground">{employee.job_title || "—"}</span>
                       </div>
-                      <div className="hidden md:block col-span-2 text-sm capitalize">
-                        {employee.role}
-                      </div>
+                      <div className="hidden md:block col-span-2 text-sm capitalize">{employee.role}</div>
                       <div className="col-span-4 sm:col-span-2">
-                        <Badge
-                          variant={employee.status === "active" ? "default" : "secondary"}
-                          className="capitalize"
-                        >
+                        <Badge variant={employee.status === "active" ? "default" : "secondary"} className="capitalize">
                           {employee.status.replace("_", " ")}
                         </Badge>
                       </div>
@@ -275,15 +325,18 @@ export default function Employees() {
                             </DropdownMenuItem>
                             {isAdmin && (
                               <>
+                                <DropdownMenuItem
+                                  className="cursor-pointer"
+                                  onClick={() => setEditTarget(employee as EmployeeRow)}
+                                >
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  Edit Details
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                   className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
                                   onClick={() =>
-                                    setToDelete({
-                                      id: employee.id,
-                                      full_name: employee.full_name,
-                                      email: employee.email,
-                                    })
+                                    setToDelete({ id: employee.id, full_name: employee.full_name, email: employee.email })
                                   }
                                 >
                                   <Trash2 className="mr-2 h-4 w-4" />
@@ -303,173 +356,95 @@ export default function Employees() {
         </CardContent>
       </Card>
 
-      {/* Add Employee Dialog */}
-      <Dialog
-        open={addOpen}
-        onOpenChange={(v) => {
-          setAddOpen(v);
-          if (!v) form.reset();
-        }}
-      >
+      {/* ── Add Employee Dialog ─────────────────────────────────────────────── */}
+      <Dialog open={addOpen} onOpenChange={(v) => { setAddOpen(v); if (!v) addForm.reset(); }}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add Employee</DialogTitle>
           </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onAdd)} className="space-y-4">
-              {/* Name + Email */}
+          <Form {...addForm}>
+            <form onSubmit={addForm.handleSubmit(onAdd)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="full_name"
-                  render={({ field }) => (
-                    <FormItem className="col-span-2 sm:col-span-1">
-                      <FormLabel>Full Name <span className="text-destructive">*</span></FormLabel>
-                      <FormControl>
-                        <Input placeholder="Jane Smith" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem className="col-span-2 sm:col-span-1">
-                      <FormLabel>Email <span className="text-destructive">*</span></FormLabel>
-                      <FormControl>
-                        <Input type="email" placeholder="jane@company.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Password */}
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password <span className="text-destructive">*</span></FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="Min. 6 characters" {...field} />
-                    </FormControl>
+                <FormField control={addForm.control} name="full_name" render={({ field }) => (
+                  <FormItem className="col-span-2 sm:col-span-1">
+                    <FormLabel>Full Name <span className="text-destructive">*</span></FormLabel>
+                    <FormControl><Input placeholder="Jane Smith" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
-                )}
-              />
-
-              {/* Job Title + Phone */}
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="job_title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Job Title</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. Engineer" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone</FormLabel>
-                      <FormControl>
-                        <Input placeholder="+1 555 000 0000" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Department + Role */}
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="department_id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Department</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select…" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {departments?.map((d) => (
-                            <SelectItem key={d.id} value={String(d.id)}>
-                              {d.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="role"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Role</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="employee">Employee</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Salary */}
-              <FormField
-                control={form.control}
-                name="salary"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Salary (annual)</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="e.g. 75000" {...field} />
-                    </FormControl>
+                )} />
+                <FormField control={addForm.control} name="email" render={({ field }) => (
+                  <FormItem className="col-span-2 sm:col-span-1">
+                    <FormLabel>Email <span className="text-destructive">*</span></FormLabel>
+                    <FormControl><Input type="email" placeholder="jane@company.com" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
-                )}
-              />
-
+                )} />
+              </div>
+              <FormField control={addForm.control} name="password" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password <span className="text-destructive">*</span></FormLabel>
+                  <FormControl><Input type="password" placeholder="Min. 6 characters" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={addForm.control} name="job_title" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Job Title</FormLabel>
+                    <FormControl><Input placeholder="e.g. Engineer" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={addForm.control} name="phone" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone</FormLabel>
+                    <FormControl><Input placeholder="+1 555 000 0000" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={addForm.control} name="department_id" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Department</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {departments?.map((d) => (
+                          <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={addForm.control} name="role" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="employee">Employee</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+              <FormField control={addForm.control} name="salary" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Salary (annual)</FormLabel>
+                  <FormControl><Input type="number" placeholder="e.g. 75000" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
               <DialogFooter className="pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setAddOpen(false);
-                    form.reset();
-                  }}
-                >
-                  Cancel
-                </Button>
+                <Button type="button" variant="outline" onClick={() => { setAddOpen(false); addForm.reset(); }}>Cancel</Button>
                 <Button type="submit" disabled={createEmployee.isPending}>
                   {createEmployee.isPending ? "Adding…" : "Add Employee"}
                 </Button>
@@ -479,13 +454,109 @@ export default function Employees() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
-      <AlertDialog
-        open={!!toDelete}
-        onOpenChange={(open) => {
-          if (!open) setToDelete(null);
-        }}
-      >
+      {/* ── Edit Employee Dialog ─────────────────────────────────────────────── */}
+      <Dialog open={!!editTarget} onOpenChange={(v) => { if (!v) setEditTarget(null); }}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Employee</DialogTitle>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(onEdit)} className="space-y-4">
+              <FormField control={editForm.control} name="full_name" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Full Name <span className="text-destructive">*</span></FormLabel>
+                  <FormControl><Input placeholder="Jane Smith" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={editForm.control} name="job_title" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Job Title</FormLabel>
+                    <FormControl><Input placeholder="e.g. Engineer" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={editForm.control} name="phone" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone</FormLabel>
+                    <FormControl><Input placeholder="+1 555 000 0000" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={editForm.control} name="department_id" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Department</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">None</SelectItem>
+                        {departments?.map((d) => (
+                          <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={editForm.control} name="role" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="employee">Employee</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={editForm.control} name="status" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="on_leave">On Leave</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={editForm.control} name="salary" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Salary (annual)</FormLabel>
+                    <FormControl><Input type="number" placeholder="e.g. 75000" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+              <DialogFooter className="pt-2">
+                <Button type="button" variant="outline" onClick={() => setEditTarget(null)}>Cancel</Button>
+                <Button type="submit" disabled={updateEmployee.isPending}>
+                  {updateEmployee.isPending ? "Saving…" : "Save Changes"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete Confirmation ──────────────────────────────────────────────── */}
+      <AlertDialog open={!!toDelete} onOpenChange={(open) => { if (!open) setToDelete(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Employee</AlertDialogTitle>
