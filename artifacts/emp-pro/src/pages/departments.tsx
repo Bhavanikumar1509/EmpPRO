@@ -1,12 +1,71 @@
-import React from "react";
-import { useListDepartments } from "@workspace/api-client-react";
+import React, { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { useListDepartments, useCreateDepartment } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Building2, Plus, Users } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
+
+const deptSchema = z.object({
+  name: z.string().min(1, "Department name is required"),
+  description: z.string().optional(),
+});
+
+type DeptForm = z.infer<typeof deptSchema>;
 
 export default function Departments() {
   const { data: departments, isLoading } = useListDepartments();
+  const [open, setOpen] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const createDept = useCreateDepartment();
+
+  const form = useForm<DeptForm>({
+    resolver: zodResolver(deptSchema),
+    defaultValues: { name: "", description: "" },
+  });
+
+  const onSubmit = (values: DeptForm) => {
+    createDept.mutate(
+      { data: { name: values.name, description: values.description || undefined } },
+      {
+        onSuccess: () => {
+          toast({ title: "Department created", description: `"${values.name}" has been added.` });
+          form.reset();
+          setOpen(false);
+          queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
+        },
+        onError: (err: any) => {
+          toast({
+            title: "Failed to create department",
+            description: err?.message || "Something went wrong.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -15,7 +74,7 @@ export default function Departments() {
           <h2 className="text-2xl font-bold tracking-tight">Departments</h2>
           <p className="text-muted-foreground">Manage organization structure and teams.</p>
         </div>
-        <Button>
+        <Button onClick={() => setOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Add Department
         </Button>
@@ -71,6 +130,56 @@ export default function Departments() {
           ))
         )}
       </div>
+
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) form.reset(); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Department</DialogTitle>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Department Name <span className="text-destructive">*</span></FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. Engineering" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Brief description of this department..."
+                        rows={3}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter className="pt-2">
+                <Button type="button" variant="outline" onClick={() => { setOpen(false); form.reset(); }}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createDept.isPending}>
+                  {createDept.isPending ? "Creating..." : "Create Department"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

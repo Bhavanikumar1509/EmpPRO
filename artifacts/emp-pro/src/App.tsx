@@ -9,8 +9,6 @@ import NotFound from "@/pages/not-found";
 
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
-import Employees from "@/pages/employees";
-import EmployeeDetail from "@/pages/employee-detail";
 import Departments from "@/pages/departments";
 import Projects from "@/pages/projects";
 import ProjectDetail from "@/pages/project-detail";
@@ -38,7 +36,7 @@ function ProtectedRoute({ component: Component, path }: { component: any, path: 
         const { user, isLoading } = useAuth();
         if (isLoading) return <div className="flex h-screen w-full items-center justify-center">Loading...</div>;
         if (!user) return <Redirect to="/login" />;
-        
+
         return (
           <Layout>
             <Component params={params} />
@@ -63,8 +61,6 @@ function Router() {
       </Route>
 
       <ProtectedRoute path="/dashboard" component={Dashboard} />
-      <ProtectedRoute path="/employees" component={Employees} />
-      <ProtectedRoute path="/employees/:id" component={EmployeeDetail} />
       <ProtectedRoute path="/departments" component={Departments} />
       <ProtectedRoute path="/projects" component={Projects} />
       <ProtectedRoute path="/projects/:id" component={ProjectDetail} />

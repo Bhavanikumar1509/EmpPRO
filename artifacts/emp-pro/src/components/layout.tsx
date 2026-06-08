@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "./auth-provider";
+import { useTheme } from "next-themes";
 import {
   Sidebar,
   SidebarContent,
@@ -17,18 +18,19 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, Users, Building2, FolderKanban, CheckSquare, Clock, CalendarCheck, TrendingUp, Bell, BarChart3, Settings, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { LayoutDashboard, Building2, FolderKanban, CheckSquare, Clock, CalendarCheck, TrendingUp, Bell, BarChart3, Settings, LogOut, Sun, Moon } from "lucide-react";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, isLoading, logout } = useAuth();
   const [location] = useLocation();
+  const { theme, setTheme } = useTheme();
 
   if (isLoading) {
     return <div className="flex h-screen w-full items-center justify-center">Loading...</div>;
   }
 
   if (!user) {
-    // If not authenticated and not on login, wouter should redirect, but we can return null here to avoid flashing
     return null;
   }
 
@@ -36,7 +38,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const menuItems = [
     { title: "Dashboard", icon: LayoutDashboard, url: "/dashboard" },
-    { title: "Employees", icon: Users, url: "/employees" },
     { title: "Departments", icon: Building2, url: "/departments", adminOnly: true },
     { title: "Projects", icon: FolderKanban, url: "/projects" },
     { title: "Tasks", icon: CheckSquare, url: "/tasks" },
@@ -107,19 +108,27 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </DropdownMenu>
           </SidebarFooter>
         </Sidebar>
-        
+
         <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
           <header className="h-16 flex items-center justify-between px-6 border-b bg-card shrink-0">
             <div className="flex items-center gap-4">
               <SidebarTrigger />
               <h1 className="text-lg font-semibold capitalize">
-                {location.split('/')[1] || "Dashboard"}
+                {location.split("/")[1] || "Dashboard"}
               </h1>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="rounded-full text-muted-foreground hover:text-foreground"
+                title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              </Button>
               <Link href="/notifications" className="relative p-2 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
                 <Bell className="h-5 w-5" />
-                {/* Red dot for unread would go here if we fetched notifications */}
               </Link>
             </div>
           </header>

@@ -13,21 +13,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
-  const token = getToken();
+  const [token, setTokenState] = useState<string | null>(() => getToken());
+
+  useEffect(() => {
+    const handleChange = () => setTokenState(getToken());
+    window.addEventListener("emp_pro_auth_change", handleChange);
+    return () => window.removeEventListener("emp_pro_auth_change", handleChange);
+  }, []);
+
   const { data: user, isLoading, isError } = useGetCurrentUser({
     query: {
       enabled: !!token,
       retry: false,
-    }
+    },
   });
-
-  const [initialLoading, setInitialLoading] = useState(true);
-
-  useEffect(() => {
-    if (!isLoading) {
-      setInitialLoading(false);
-    }
-  }, [isLoading]);
 
   useEffect(() => {
     if (isError) {
@@ -41,8 +40,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLocation("/login");
   };
 
+  const loading = !!token && isLoading;
+
   return (
-    <AuthContext.Provider value={{ user: user || null, isLoading: initialLoading, logout }}>
+    <AuthContext.Provider value={{ user: user || null, isLoading: loading, logout }}>
       {children}
     </AuthContext.Provider>
   );
