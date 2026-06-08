@@ -19,7 +19,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Building2, FolderKanban, CheckSquare, Clock, CalendarCheck, TrendingUp, Bell, BarChart3, Settings, LogOut, Sun, Moon } from "lucide-react";
+import { LayoutDashboard, Users, Building2, FolderKanban, CheckSquare, Clock, CalendarCheck, TrendingUp, Bell, BarChart3, Settings, LogOut, Sun, Moon } from "lucide-react";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, isLoading, logout } = useAuth();
@@ -38,6 +38,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const menuItems = [
     { title: "Dashboard", icon: LayoutDashboard, url: "/dashboard" },
+    { title: "Employees", icon: Users, url: "/employees" },
     { title: "Departments", icon: Building2, url: "/departments", adminOnly: true },
     { title: "Projects", icon: FolderKanban, url: "/projects" },
     { title: "Tasks", icon: CheckSquare, url: "/tasks" },
