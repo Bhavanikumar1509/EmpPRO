@@ -1,23 +1,71 @@
 import React, { useState } from "react";
 import { Link } from "wouter";
-import { useListEmployees } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useListEmployees, useDeleteEmployee } from "@workspace/api-client-react";
+import { useAuth } from "@/components/auth-provider";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Plus, MoreVertical } from "lucide-react";
+import { Search, Plus, MoreVertical, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
+
+type EmployeeSummary = { id: number; full_name: string; email: string };
 
 export default function Employees() {
   const [search, setSearch] = useState("");
+  const [toDelete, setToDelete] = useState<EmployeeSummary | null>(null);
   const { data, isLoading } = useListEmployees({ search: search || undefined });
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const deleteEmployee = useDeleteEmployee();
+
+  const isAdmin = user?.role === "admin";
+
+  const handleConfirmDelete = () => {
+    if (!toDelete) return;
+    deleteEmployee.mutate(
+      { id: toDelete.id },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Employee removed",
+            description: `${toDelete.full_name} has been deleted.`,
+          });
+          queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+          setToDelete(null);
+        },
+        onError: (err: any) => {
+          toast({
+            title: "Failed to delete",
+            description: err?.message || "Something went wrong.",
+            variant: "destructive",
+          });
+          setToDelete(null);
+        },
+      }
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -94,8 +142,8 @@ export default function Employees() {
                         {employee.role}
                       </div>
                       <div className="col-span-4 sm:col-span-2">
-                        <Badge variant={employee.status === 'active' ? 'default' : 'secondary'} className="capitalize">
-                          {employee.status.replace('_', ' ')}
+                        <Badge variant={employee.status === "active" ? "default" : "secondary"} className="capitalize">
+                          {employee.status.replace("_", " ")}
                         </Badge>
                       </div>
                       <div className="col-span-3 sm:col-span-1 text-right">
@@ -110,6 +158,24 @@ export default function Employees() {
                               <Link href={`/employees/${employee.id}`}>View Profile</Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem>Edit Details</DropdownMenuItem>
+                            {isAdmin && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+                                  onClick={() =>
+                                    setToDelete({
+                                      id: employee.id,
+                                      full_name: employee.full_name,
+                                      email: employee.email,
+                                    })
+                                  }
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete Employee
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -121,6 +187,29 @@ export default function Employees() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!toDelete} onOpenChange={(open) => { if (!open) setToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Employee</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete{" "}
+              <span className="font-semibold text-foreground">{toDelete?.full_name}</span>{" "}
+              ({toDelete?.email})? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deleteEmployee.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteEmployee.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
