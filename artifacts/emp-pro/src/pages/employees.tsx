@@ -144,7 +144,7 @@ export default function Employees() {
           department_id: values.department_id ? Number(values.department_id) : undefined,
           role: values.role as "employee" | "admin",
           salary: values.salary ? Number(values.salary) : undefined,
-          hire_date: today as unknown as Date,
+          hire_date: today,
           status: "active",
         },
       },

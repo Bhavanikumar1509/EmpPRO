@@ -53,7 +53,7 @@ export default function Performance() {
                   <CardTitle className="text-lg">{review.employee_name}</CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">Period: {review.period}</p>
                 </div>
-                <Badge variant={review.status === 'published' ? 'default' : 'secondary'} className="capitalize">
+                <Badge variant={review.status === 'submitted' ? 'default' : 'secondary'} className="capitalize">
                   {review.status}
                 </Badge>
               </CardHeader>

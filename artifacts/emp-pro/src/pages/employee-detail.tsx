@@ -12,7 +12,7 @@ import { Mail, Phone, MapPin, Building2, CalendarDays, ArrowLeft, Edit } from "l
 export default function EmployeeDetail({ params }: { params: { id: string } }) {
   const id = parseInt(params.id, 10);
   const { data: employee, isLoading } = useGetEmployee(id);
-  const { data: tasks } = useListTasks({ assignee_id: id }, { query: { enabled: !!id } });
+  const { data: tasks } = useListTasks({ assignee_id: id }, { query: { enabled: !!id } as any });
 
   if (isLoading) {
     return (

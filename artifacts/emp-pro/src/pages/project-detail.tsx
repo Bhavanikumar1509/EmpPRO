@@ -12,7 +12,7 @@ import { ArrowLeft, Plus, Calendar, Settings, Clock, CheckSquare } from "lucide-
 export default function ProjectDetail({ params }: { params: { id: string } }) {
   const id = parseInt(params.id, 10);
   const { data: project, isLoading: loadingProject } = useGetProject(id);
-  const { data: tasks, isLoading: loadingTasks } = useListTasks({ project_id: id }, { query: { enabled: !!id } });
+  const { data: tasks, isLoading: loadingTasks } = useListTasks({ project_id: id }, { query: { enabled: !!id } as any });
 
   const getStatusColor = (status: string) => {
     switch (status) {
