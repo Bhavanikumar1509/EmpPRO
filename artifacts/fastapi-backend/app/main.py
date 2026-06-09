@@ -198,7 +198,7 @@ def _auto_seed():
             ))
 
         db.commit()
-        print("Auto-seed complete: 10 employees seeded. Login: alice@emppro.com / password123")
+        print("Auto-seed complete: 10 employees seeded. Login: bharathkumarkalavakunta@gmail.com / Hello@8978")
     except Exception as e:
         db.rollback()
         print(f"Auto-seed failed: {e}")
