@@ -153,13 +153,16 @@ function AssigneeMultiSelect({
           <div className="max-h-52 overflow-y-auto py-1">
             {selected.length > 0 && (
               <>
-                <button
-                  type="button"
+                <div
+                  role="option"
+                  aria-selected={false}
+                  tabIndex={0}
                   onClick={() => onChange([])}
-                  className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted flex items-center gap-2"
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onChange([]); } }}
+                  className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted flex items-center gap-2 cursor-pointer"
                 >
                   <X className="w-3 h-3" /> Clear all ({selected.length} selected)
-                </button>
+                </div>
                 <div className="border-t my-1" />
               </>
             )}
@@ -167,22 +170,28 @@ function AssigneeMultiSelect({
               <p className="text-xs text-muted-foreground px-3 py-2">No employees found</p>
             ) : (
               filtered.map((e) => (
-                <button
+                <div
                   key={e.id}
-                  type="button"
+                  role="option"
+                  aria-selected={selected.includes(e.id)}
+                  tabIndex={0}
                   onClick={() => toggle(e.id)}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted text-left transition-colors"
+                  onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(e.id); } }}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted cursor-pointer transition-colors"
                 >
-                  <Checkbox
-                    checked={selected.includes(e.id)}
-                    className="pointer-events-none shrink-0"
-                  />
+                  <div className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center ${selected.includes(e.id) ? "bg-primary border-primary" : "border-input"}`}>
+                    {selected.includes(e.id) && (
+                      <svg className="w-2.5 h-2.5 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
                   <Avatar className="w-6 h-6 shrink-0">
                     <AvatarImage src={e.avatar_url || ""} />
                     <AvatarFallback className="text-[9px]">{e.full_name.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <span className="truncate">{e.full_name}</span>
-                </button>
+                </div>
               ))
             )}
           </div>
