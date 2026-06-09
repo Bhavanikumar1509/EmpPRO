@@ -150,8 +150,8 @@ for i in range(14):
             )
             db.add(ts)
 
-# Attendance (last 14 days)
-for i in range(14):
+# Attendance (last 14 days, excluding today so check-in works on a fresh DB)
+for i in range(1, 15):
     d = today - timedelta(days=i)
     if d.weekday() < 5:
         for emp in emps:

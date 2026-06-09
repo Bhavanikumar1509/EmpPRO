@@ -2,11 +2,18 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useListDepartments, useCreateDepartment } from "@workspace/api-client-react";
+import {
+  useListDepartments,
+  useCreateDepartment,
+  useListEmployees,
+  getListDepartmentsQueryKey,
+} from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Building2, Plus, Users } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Building2, Plus, Users, X, Briefcase } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +21,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   Form,
   FormControl,
@@ -34,9 +47,107 @@ const deptSchema = z.object({
 
 type DeptForm = z.infer<typeof deptSchema>;
 
+type Department = {
+  id: number;
+  name: string;
+  description?: string | null;
+  head_name?: string | null;
+  employee_count?: number;
+};
+
+function DepartmentEmployeesSheet({
+  dept,
+  onClose,
+}: {
+  dept: Department | null;
+  onClose: () => void;
+}) {
+  const { data: employeesData, isLoading } = useListEmployees(
+    dept ? { department_id: dept.id } : undefined,
+    { query: { enabled: !!dept } }
+  );
+
+  return (
+    <Sheet open={!!dept} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+        <SheetHeader className="mb-4">
+          <SheetTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-primary" />
+            {dept?.name}
+          </SheetTitle>
+          {dept?.description && (
+            <p className="text-sm text-muted-foreground">{dept.description}</p>
+          )}
+        </SheetHeader>
+
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Team Members
+          </span>
+          <Badge variant="secondary" className="font-semibold">
+            {employeesData?.total ?? dept?.employee_count ?? 0}
+          </Badge>
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-lg border">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div className="space-y-1.5 flex-1">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : employeesData?.employees?.length === 0 ? (
+          <div className="py-12 text-center text-muted-foreground border border-dashed rounded-lg">
+            No employees in this department
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {employeesData?.employees?.map((emp) => (
+              <div
+                key={emp.id}
+                className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/40 transition-colors"
+              >
+                <Avatar className="h-10 w-10 shrink-0">
+                  <AvatarFallback className="text-sm font-semibold bg-primary/10 text-primary">
+                    {emp.full_name
+                      .split(" ")
+                      .map((n: string) => n[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm truncate">{emp.full_name}</div>
+                  <div className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                    <Briefcase className="h-3 w-3 shrink-0" />
+                    {emp.job_title || "No title"}
+                  </div>
+                </div>
+                <Badge
+                  variant={emp.status === "active" ? "default" : "secondary"}
+                  className="text-xs capitalize shrink-0"
+                >
+                  {emp.status}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 export default function Departments() {
   const { data: departments, isLoading } = useListDepartments();
   const [open, setOpen] = useState(false);
+  const [selectedDept, setSelectedDept] = useState<Department | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const createDept = useCreateDepartment();
@@ -54,7 +165,7 @@ export default function Departments() {
           toast({ title: "Department created", description: `"${values.name}" has been added.` });
           form.reset();
           setOpen(false);
-          queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
+          queryClient.invalidateQueries({ queryKey: getListDepartmentsQueryKey() });
         },
         onError: (err: any) => {
           toast({
@@ -102,10 +213,14 @@ export default function Departments() {
           </div>
         ) : (
           departments?.map((dept) => (
-            <Card key={dept.id} className="hover-elevate shadow-sm flex flex-col">
+            <Card
+              key={dept.id}
+              className="hover-elevate shadow-sm flex flex-col cursor-pointer group transition-all border-border/60 hover:border-primary/40 hover:shadow-md"
+              onClick={() => setSelectedDept(dept)}
+            >
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
-                  <CardTitle className="flex items-center gap-2 text-lg">
+                  <CardTitle className="flex items-center gap-2 text-lg group-hover:text-primary transition-colors">
                     <Building2 className="h-5 w-5 text-primary" />
                     {dept.name}
                   </CardTitle>
@@ -130,6 +245,8 @@ export default function Departments() {
           ))
         )}
       </div>
+
+      <DepartmentEmployeesSheet dept={selectedDept} onClose={() => setSelectedDept(null)} />
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) form.reset(); }}>
         <DialogContent className="sm:max-w-md">

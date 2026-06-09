@@ -1,7 +1,8 @@
 import React from "react";
+import { Link } from "wouter";
 import { useGetDashboardStats } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, FolderKanban, CheckSquare, Clock, Activity, CalendarCheck } from "lucide-react";
+import { Users, FolderKanban, CheckSquare, Clock, Activity, CalendarCheck, ChevronRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Dashboard() {
@@ -38,6 +39,8 @@ export default function Dashboard() {
       subValue: `${stats.active_employees} active`,
       icon: Users,
       color: "text-blue-500",
+      bg: "bg-blue-50 dark:bg-blue-950/30",
+      href: "/employees",
     },
     {
       title: "Active Projects",
@@ -45,6 +48,8 @@ export default function Dashboard() {
       subValue: `out of ${stats.total_projects} total`,
       icon: FolderKanban,
       color: "text-purple-500",
+      bg: "bg-purple-50 dark:bg-purple-950/30",
+      href: "/projects",
     },
     {
       title: "Completed Tasks",
@@ -52,6 +57,8 @@ export default function Dashboard() {
       subValue: `out of ${stats.total_tasks} total`,
       icon: CheckSquare,
       color: "text-green-500",
+      bg: "bg-green-50 dark:bg-green-950/30",
+      href: "/tasks",
     },
     {
       title: "Present Today",
@@ -59,6 +66,8 @@ export default function Dashboard() {
       subValue: `${stats.on_leave_today} on leave`,
       icon: CalendarCheck,
       color: "text-orange-500",
+      bg: "bg-orange-50 dark:bg-orange-950/30",
+      href: "/attendance",
     },
   ];
 
@@ -66,20 +75,27 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((kpi, i) => (
-          <Card key={i} className="overflow-hidden hover-elevate shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {kpi.title}
-              </CardTitle>
-              <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{kpi.value}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {kpi.subValue}
-              </p>
-            </CardContent>
-          </Card>
+          <Link key={i} href={kpi.href}>
+            <Card className="overflow-hidden hover-elevate shadow-sm cursor-pointer group transition-all border-border/60 hover:border-primary/40 hover:shadow-md">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {kpi.title}
+                </CardTitle>
+                <div className={`${kpi.bg} p-1.5 rounded-md`}>
+                  <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-end justify-between">
+                  <div>
+                    <div className="text-2xl font-bold">{kpi.value}</div>
+                    <p className="text-xs text-muted-foreground mt-1">{kpi.subValue}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary/60 transition-colors mb-1" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
 
@@ -119,16 +135,19 @@ export default function Dashboard() {
             <CardTitle>Needs Attention</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-950/20 text-orange-700 dark:text-orange-400 rounded-lg border border-orange-200 dark:border-orange-900/50">
-                <div className="flex items-center gap-3">
-                  <Clock className="h-5 w-5" />
-                  <span className="font-medium">Pending Timesheets</span>
+            <div className="space-y-3">
+              <Link href="/timesheets">
+                <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-950/20 text-orange-700 dark:text-orange-400 rounded-lg border border-orange-200 dark:border-orange-900/50 cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-950/30 transition-colors group">
+                  <div className="flex items-center gap-3">
+                    <Clock className="h-5 w-5" />
+                    <span className="font-medium">Pending Timesheets</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-lg font-bold">{stats.pending_timesheets}</span>
+                    <ChevronRight className="h-4 w-4 opacity-40 group-hover:opacity-80 transition-opacity" />
+                  </div>
                 </div>
-                <span className="text-lg font-bold">{stats.pending_timesheets}</span>
-              </div>
-              
-              {/* Could add other attention items here */}
+              </Link>
             </div>
           </CardContent>
         </Card>
