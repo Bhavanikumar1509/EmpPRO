@@ -45,24 +45,24 @@ db.flush()
 
 # Employees
 employees_data = [
-    ("Alice Johnson", "alice@emppro.com", "CTO", 0, "admin", 145000),
-    ("Bob Martinez", "bob@emppro.com", "Senior Engineer", 0, "employee", 110000),
-    ("Carol White", "carol@emppro.com", "Product Manager", 1, "employee", 105000),
-    ("David Lee", "david@emppro.com", "HR Director", 2, "admin", 98000),
-    ("Eva Chen", "eva@emppro.com", "Sales Manager", 3, "employee", 92000),
-    ("Frank Brown", "frank@emppro.com", "Software Engineer", 0, "employee", 95000),
-    ("Grace Kim", "grace@emppro.com", "Marketing Lead", 4, "employee", 88000),
-    ("Hank Torres", "hank@emppro.com", "Finance Analyst", 5, "employee", 82000),
-    ("Iris Patel", "iris@emppro.com", "UX Designer", 1, "employee", 90000),
-    ("Jake Adams", "jake@emppro.com", "DevOps Engineer", 0, "employee", 100000),
+    ("Bharath Kumar", "bharathkumarkalavakunta@gmail.com", "CTO", 0, "admin", 145000, "Hello@8978"),
+    ("Bob Martinez", "bob@emppro.com", "Senior Engineer", 0, "employee", 110000, "password123"),
+    ("Carol White", "carol@emppro.com", "Product Manager", 1, "employee", 105000, "password123"),
+    ("David Lee", "david@emppro.com", "HR Director", 2, "admin", 98000, "password123"),
+    ("Eva Chen", "eva@emppro.com", "Sales Manager", 3, "employee", 92000, "password123"),
+    ("Frank Brown", "frank@emppro.com", "Software Engineer", 0, "employee", 95000, "password123"),
+    ("Grace Kim", "grace@emppro.com", "Marketing Lead", 4, "employee", 88000, "password123"),
+    ("Hank Torres", "hank@emppro.com", "Finance Analyst", 5, "employee", 82000, "password123"),
+    ("Iris Patel", "iris@emppro.com", "UX Designer", 1, "employee", 90000, "password123"),
+    ("Jake Adams", "jake@emppro.com", "DevOps Engineer", 0, "employee", 100000, "password123"),
 ]
 
 emps = []
-for i, (name, email, title, dept_idx, role, salary) in enumerate(employees_data):
+for i, (name, email, title, dept_idx, role, salary, pwd) in enumerate(employees_data):
     e = Employee(
         full_name=name,
         email=email,
-        password_hash=get_password_hash("password123"),
+        password_hash=get_password_hash(pwd),
         job_title=title,
         department_id=depts[dept_idx].id,
         status="active",
@@ -216,6 +216,6 @@ db.commit()
 db.close()
 print("Seeding complete! 10 employees, 5 projects, 8 tasks, attendance + timesheets + reviews seeded.")
 print("\nLogin credentials:")
-print("  Admin: alice@emppro.com / password123")
+print("  Admin: bharathkumarkalavakunta@gmail.com / Hello@8978")
 print("  Admin: david@emppro.com / password123")
 print("  Employee: bob@emppro.com / password123")
