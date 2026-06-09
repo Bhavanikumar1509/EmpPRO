@@ -94,10 +94,12 @@ function AssigneeMultiSelect({
 
   return (
     <div className="relative" ref={ref}>
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between gap-2 border rounded-md px-3 py-2 text-sm bg-background hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring min-h-[38px]"
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen((o) => !o); } }}
+        className="w-full flex items-center justify-between gap-2 border rounded-md px-3 py-2 text-sm bg-background hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring min-h-[38px] cursor-pointer select-none"
       >
         <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
           {selectedEmployees.length === 0 ? (
@@ -118,22 +120,24 @@ function AssigneeMultiSelect({
                   <AvatarFallback className="text-[8px]">{e.full_name.charAt(0)}</AvatarFallback>
                 </Avatar>
                 {e.full_name.split(" ")[0]}
-                <button
-                  type="button"
+                <span
+                  role="button"
+                  tabIndex={0}
                   onClick={(ev) => {
                     ev.stopPropagation();
                     toggle(e.id);
                   }}
-                  className="hover:text-destructive ml-0.5"
+                  onKeyDown={(ev) => { if (ev.key === "Enter") { ev.stopPropagation(); toggle(e.id); } }}
+                  className="hover:text-destructive ml-0.5 cursor-pointer"
                 >
                   <X className="w-2.5 h-2.5" />
-                </button>
+                </span>
               </span>
             ))
           )}
         </div>
         <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
-      </button>
+      </div>
 
       {open && (
         <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg">
