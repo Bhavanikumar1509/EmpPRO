@@ -240,10 +240,13 @@ def health_check():
     return {"status": "ok"}
 
 
-# Serve React frontend
+# Serve React frontend (built files)
+# main.py lives at: <root>/artifacts/fastapi-backend/app/main.py
+# Going up 3 dirs from app/ reaches <root>/artifacts/, then emp-pro/dist/public
 from fastapi.staticfiles import StaticFiles
-import os
+import os as _os
 
-_static_dir = os.path.join(os.path.dirname(__file__), "../../emp-pro/dist/public")
-if os.path.isdir(_static_dir):
+_HERE = _os.path.dirname(_os.path.abspath(__file__))
+_static_dir = _os.path.normpath(_os.path.join(_HERE, "..", "..", "emp-pro", "dist", "public"))
+if _os.path.isdir(_static_dir):
     app.mount("/", StaticFiles(directory=_static_dir, html=True), name="static")

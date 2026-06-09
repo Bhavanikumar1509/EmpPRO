@@ -2,9 +2,9 @@ modules = ["nodejs-20", "python-3.12", "web"]
 
 [deployment]
 router = "application"
-deploymentTarget = "autoscale"
-run = ["bash", "-c", "cd artifacts/fastapi-backend && python3 -m uvicorn app.main:app --host 0.0.0.0 --port 80"]
-build = ["bash", "-c", "cd artifacts/emp-pro && pnpm run build"]
+deploymentTarget = "vm"
+run = ["bash", "-c", "cd artifacts/fastapi-backend && pip install -r requirements.txt -q && python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8080"]
+build = ["bash", "-c", "cd artifacts/emp-pro && pnpm install --frozen-lockfile && pnpm run build"]
 
 [deployment.postBuild]
 args = ["pnpm", "store", "prune"]
