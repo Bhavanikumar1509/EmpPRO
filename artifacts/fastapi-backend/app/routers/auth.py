@@ -7,7 +7,7 @@ from app.core.database import get_db
 from app.core.security import verify_password, create_access_token, decode_token
 from app.core.config import settings
 from app.models.employee import Employee
-from app.schemas.auth import LoginInput, AuthToken, UserProfile
+from app.schemas.auth import LoginInput, AuthToken, UserProfile, ResetPasswordInput
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 security = HTTPBearer(auto_error=False)
@@ -64,3 +64,16 @@ def login(body: LoginInput, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserProfile)
 def get_me(current_user: Employee = Depends(get_current_user)):
     return _build_user_profile(current_user)
+
+
+@router.post("/reset-password")
+def reset_password(body: ResetPasswordInput, db: Session = Depends(get_db)):
+    from app.core.security import get_password_hash
+    user = db.query(Employee).filter(Employee.email == body.email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="No account found with that email address")
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    user.password_hash = get_password_hash(body.new_password)
+    db.commit()
+    return {"message": "Password reset successfully"}

@@ -25,3 +25,8 @@ class AuthToken(BaseModel):
     access_token: str
     token_type: str
     user: UserProfile
+
+
+class ResetPasswordInput(BaseModel):
+    email: EmailStr
+    new_password: str

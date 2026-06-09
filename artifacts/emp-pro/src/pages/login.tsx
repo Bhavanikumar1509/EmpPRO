@@ -10,24 +10,38 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Building2, KeyRound } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address" }),
   password: z.string().min(1, { message: "Password is required" }),
 });
 
+const resetSchema = z.object({
+  email: z.string().email({ message: "Invalid email address" }),
+  new_password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+  confirm_password: z.string().min(1, { message: "Please confirm your password" }),
+}).refine((data) => data.new_password === data.confirm_password, {
+  message: "Passwords do not match",
+  path: ["confirm_password"],
+});
+
 export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const login = useLogin();
-  
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
+    defaultValues: { email: "", password: "" },
+  });
+
+  const resetForm = useForm<z.infer<typeof resetSchema>>({
+    resolver: zodResolver(resetSchema),
+    defaultValues: { email: "", new_password: "", confirm_password: "" },
   });
 
   const onSubmit = (values: z.infer<typeof loginSchema>) => {
@@ -36,10 +50,7 @@ export default function Login() {
       {
         onSuccess: (data) => {
           setToken(data.access_token);
-          toast({
-            title: "Success",
-            description: "Logged in successfully",
-          });
+          toast({ title: "Success", description: "Logged in successfully" });
           setLocation("/dashboard");
         },
         onError: (error: any) => {
@@ -51,6 +62,29 @@ export default function Login() {
         },
       }
     );
+  };
+
+  const onResetSubmit = async (values: z.infer<typeof resetSchema>) => {
+    setResetLoading(true);
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: values.email, new_password: values.new_password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || "Failed to reset password");
+      }
+      toast({ title: "Password reset", description: "Your password has been updated. You can now sign in." });
+      setForgotOpen(false);
+      resetForm.reset();
+      form.setValue("email", values.email);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setResetLoading(false);
+    }
   };
 
   return (
@@ -86,7 +120,16 @@ export default function Login() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <div className="flex items-center justify-between">
+                      <FormLabel>Password</FormLabel>
+                      <button
+                        type="button"
+                        onClick={() => setForgotOpen(true)}
+                        className="text-xs text-primary hover:underline focus:outline-none"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
                     <FormControl>
                       <Input type="password" placeholder="••••••••" {...field} />
                     </FormControl>
@@ -101,6 +144,73 @@ export default function Login() {
           </Form>
         </CardContent>
       </Card>
+
+      <Dialog open={forgotOpen} onOpenChange={(open) => { setForgotOpen(open); if (!open) resetForm.reset(); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                <KeyRound className="w-5 h-5 text-primary" />
+              </div>
+              <DialogTitle>Reset your password</DialogTitle>
+            </div>
+            <DialogDescription>
+              Enter your email and choose a new password.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...resetForm}>
+            <form onSubmit={resetForm.handleSubmit(onResetSubmit)} className="space-y-4 py-2">
+              <FormField
+                control={resetForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email address</FormLabel>
+                    <FormControl>
+                      <Input placeholder="name@company.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={resetForm.control}
+                name="new_password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>New password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="Min. 6 characters" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={resetForm.control}
+                name="confirm_password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm new password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter className="pt-2 gap-2">
+                <Button type="button" variant="outline" onClick={() => { setForgotOpen(false); resetForm.reset(); }}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={resetLoading}>
+                  {resetLoading ? "Resetting..." : "Reset password"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
