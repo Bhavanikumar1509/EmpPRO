@@ -206,10 +206,33 @@ def _auto_seed():
         db.close()
 
 
+def _migrate_task_assignees():
+    """Migrate existing single assignee_id values into the task_assignees junction table."""
+    from app.models.task import Task as TaskModel, task_assignees as ta_table
+    from sqlalchemy import text
+    db = SessionLocal()
+    try:
+        tasks = db.query(TaskModel).filter(TaskModel.assignee_id.isnot(None)).all()
+        for t in tasks:
+            exists = db.execute(
+                text("SELECT 1 FROM task_assignees WHERE task_id=:tid AND employee_id=:eid"),
+                {"tid": t.id, "eid": t.assignee_id}
+            ).fetchone()
+            if not exists:
+                db.execute(ta_table.insert().values(task_id=t.id, employee_id=t.assignee_id))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Task assignee migration warning: {e}")
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     _auto_seed()
+    _migrate_task_assignees()
     yield
 
 

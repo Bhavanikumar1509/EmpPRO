@@ -1,7 +1,15 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Numeric, Date
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Numeric, Date, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
+
+
+task_assignees = Table(
+    "task_assignees",
+    Base.metadata,
+    Column("task_id", Integer, ForeignKey("tasks.id", ondelete="CASCADE"), primary_key=True),
+    Column("employee_id", Integer, ForeignKey("employees.id", ondelete="CASCADE"), primary_key=True),
+)
 
 
 class Task(Base):
@@ -21,4 +29,5 @@ class Task(Base):
 
     project = relationship("Project", back_populates="tasks")
     assignee = relationship("Employee", back_populates="assigned_tasks", foreign_keys=[assignee_id])
+    assignees = relationship("Employee", secondary=task_assignees, lazy="joined")
     timesheets = relationship("Timesheet", back_populates="task", foreign_keys="Timesheet.task_id")
